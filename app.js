@@ -6,7 +6,7 @@ const STORAGE_KEY = "calendarioIA:v1";
 const DEFAULT_STATE = {
   settings: {
     geminiApiKey: "",
-    geminiModel: "gemini-2.5-flash",
+    geminiModel: "gemini-3.6-flash",
     wakeTime: "07:00",
     sleepTime: "23:00",
     preferences: "",
@@ -22,6 +22,11 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return structuredClone(DEFAULT_STATE);
     const parsed = JSON.parse(raw);
+    // Modelos que Google retiró para cuentas nuevas: migrar automáticamente al actual.
+    const RETIRED_MODELS = ["gemini-2.5-flash"];
+    if (parsed.settings && RETIRED_MODELS.includes(parsed.settings.geminiModel)) {
+      parsed.settings.geminiModel = DEFAULT_STATE.settings.geminiModel;
+    }
     return {
       settings: { ...DEFAULT_STATE.settings, ...(parsed.settings || {}) },
       weeklySchedule: parsed.weeklySchedule || [],
