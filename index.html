@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<title>Calendario IA</title>
+
+<!-- PWA / iOS home screen setup -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#6366f1" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Calendario IA" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png" />
+<link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167.png" />
+<link rel="apple-touch-icon" sizes="120x120" href="icons/icon-120.png" />
+<link rel="icon" href="icons/icon-32.png" sizes="32x32" />
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="topbar">
+    <div class="topbar-title" id="topbarTitle">Hoy</div>
+    <div class="topbar-subtitle" id="topbarSubtitle"></div>
+  </header>
+
+  <!-- ===================== VIEW: HOY ===================== -->
+  <main id="view-hoy" class="view">
+    <div class="ai-card">
+      <div class="ai-card-row">
+        <div class="ai-card-icon">✨</div>
+        <div class="ai-card-text">
+          <div class="ai-card-title">Organiza mi semana</div>
+          <div class="ai-card-desc">La IA arma tu horario con tus clases/trabajo fijos, tareas pendientes y lecturas.</div>
+        </div>
+      </div>
+
+      <div id="dayPicker" class="day-picker"></div>
+
+      <input id="todayContext" type="text" placeholder="Algo especial (opcional)… ej: cita el martes a las 15:00" />
+
+      <button type="button" id="btnAttach" class="btn-attach">📎 Adjuntar archivo para que la IA lo lea</button>
+      <input id="fileInput" type="file" accept="application/pdf,image/*,.txt,.md" multiple hidden />
+      <div id="attachList" class="attach-list"></div>
+      <p class="attach-hint">Los archivos se envían solo a Gemini para que los procese y se eliminan enseguida; no quedan guardados en la app.</p>
+
+      <div class="ai-buttons">
+        <button id="btnOrganize" class="btn-primary">Organizar este día</button>
+        <button id="btnOrganizeWeek" class="btn-primary btn-outline">Organizar toda la semana</button>
+      </div>
+      <div id="aiStatus" class="ai-status"></div>
+    </div>
+
+    <div class="section-row">
+      <h2 id="todayHeading">Horario de hoy</h2>
+      <button id="btnAddManualToday" class="btn-icon" title="Agregar bloque">＋</button>
+    </div>
+    <div id="todayTimeline" class="timeline"></div>
+    <div id="todayEmpty" class="empty-state">Aún no hay nada planeado. Pulsa “Organizar este día” (o toda la semana) o agrega un bloque manual.</div>
+  </main>
+
+  <!-- ===================== VIEW: SEMANA ===================== -->
+  <main id="view-semana" class="view" hidden>
+    <div class="section-row">
+      <h2>Horario semanal fijo</h2>
+      <button id="btnAddWeekly" class="btn-icon" title="Agregar">＋</button>
+    </div>
+    <p class="hint">Clases, trabajo, gimnasio… todo lo que se repite cada semana. La IA nunca planea nada encima de estos bloques.</p>
+    <div id="weekDays" class="week-days"></div>
+  </main>
+
+  <!-- ===================== VIEW: LIBROS ===================== -->
+  <main id="view-libros" class="view" hidden>
+    <div class="section-row">
+      <h2>Libros</h2>
+      <button id="btnAddBook" class="btn-icon" title="Agregar libro">＋</button>
+    </div>
+    <p class="hint">Agrega tus libros pendientes con su fecha límite (si tienen) y la IA te reserva tiempo de lectura.</p>
+    <div id="booksList" class="cards-list"></div>
+    <div id="booksEmpty" class="empty-state">No has agregado libros todavía.</div>
+  </main>
+
+  <!-- ===================== VIEW: TAREAS ===================== -->
+  <main id="view-tareas" class="view" hidden>
+    <div class="section-row">
+      <h2>Tareas pendientes</h2>
+      <button id="btnAddTask" class="btn-icon" title="Agregar tarea">＋</button>
+    </div>
+    <p class="hint">Cosas por hacer sin horario fijo. La IA les busca un hueco libre.</p>
+    <div id="tasksList" class="cards-list"></div>
+    <div id="tasksEmpty" class="empty-state">No tienes tareas pendientes.</div>
+  </main>
+
+  <!-- ===================== VIEW: AJUSTES ===================== -->
+  <main id="view-ajustes" class="view" hidden>
+    <div class="section-row"><h2>Ajustes</h2></div>
+
+    <div class="settings-group">
+      <label class="settings-label">Clave de API de Gemini (gratis)</label>
+      <input id="setApiKey" type="password" placeholder="AIza..." autocomplete="off" />
+      <button id="btnToggleKey" class="btn-secondary small">Mostrar/ocultar</button>
+      <p class="hint">Consíguela gratis en <span class="mono">aistudio.google.com/apikey</span>. Se guarda solo en este dispositivo, nunca se envía a ningún otro lado.</p>
+    </div>
+
+    <div class="settings-group">
+      <label class="settings-label">Modelo de Gemini</label>
+      <select id="setModel">
+        <option value="gemini-2.5-flash">gemini-2.5-flash (recomendado)</option>
+        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+        <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+      </select>
+      <p class="hint">Si un modelo da error de cuota o no está disponible en tu cuenta, prueba con otro de la lista.</p>
+    </div>
+
+    <div class="settings-group">
+      <label class="settings-label">Hora en que despiertas</label>
+      <input id="setWake" type="time" value="07:00" />
+    </div>
+    <div class="settings-group">
+      <label class="settings-label">Hora en que te acuestas</label>
+      <input id="setSleep" type="time" value="23:00" />
+    </div>
+
+    <div class="settings-group">
+      <label class="settings-label">Preferencias para la IA</label>
+      <textarea id="setPrefs" rows="4" placeholder="Ej: prefiero ejercicio en la mañana, no quiero estudiar después de las 9pm, dejo 1h libre para comer sin apuro..."></textarea>
+    </div>
+
+    <button id="btnSaveSettings" class="btn-primary">Guardar ajustes</button>
+
+    <div class="settings-group" style="margin-top:28px">
+      <label class="settings-label">Datos</label>
+      <button id="btnExport" class="btn-secondary">Exportar copia de seguridad</button>
+      <button id="btnImport" class="btn-secondary">Importar copia de seguridad</button>
+      <input id="importFile" type="file" accept="application/json" hidden />
+      <button id="btnReset" class="btn-danger">Borrar todos los datos</button>
+    </div>
+  </main>
+
+  <!-- ===================== BOTTOM NAV ===================== -->
+  <nav class="tabbar">
+    <button class="tab active" data-view="hoy">
+      <span class="tab-icon">📅</span><span>Hoy</span>
+    </button>
+    <button class="tab" data-view="semana">
+      <span class="tab-icon">🗓️</span><span>Semana</span>
+    </button>
+    <button class="tab" data-view="libros">
+      <span class="tab-icon">📚</span><span>Libros</span>
+    </button>
+    <button class="tab" data-view="tareas">
+      <span class="tab-icon">✅</span><span>Tareas</span>
+    </button>
+    <button class="tab" data-view="ajustes">
+      <span class="tab-icon">⚙️</span><span>Ajustes</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ===================== SHEET / MODAL ===================== -->
+<div id="sheetOverlay" class="sheet-overlay" hidden>
+  <div id="sheet" class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="sheetContent"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
